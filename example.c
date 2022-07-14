@@ -25,9 +25,9 @@ main(
   extern int sqlite3_clips_init(sqlite3 *, Environment *);
   static const char ls[] =
    "(deftemplate MAIN::t1"
-    "(slot s1 (type INTEGER)(default ?NONE))"
-    "(slot s2 (type STRING)(default ?NONE))"
-    "(slot s3)"
+    "(slot s1 (type INTEGER))"       /* t1.s1 INTEGER NOT NULL */
+    "(slot s2 (type SYMBOL STRING))" /* t1.s2 TEXT */
+    "(slot s3)"                      /* t1.s3 */
    ")"
   ;
   Environment *ev;

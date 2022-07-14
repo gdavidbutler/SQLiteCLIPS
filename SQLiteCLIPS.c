@@ -141,25 +141,25 @@ clpCon(
     }
     v->s = t;
     (v->s + v->n)->t = st;
-    d = "";
     if (!(st & ~(stNil | stInteger))) {
       if (st & stNil)
         d = " INTEGER";
       else
         d = " INTEGER NOT NULL";
-    }
-    else if (!(st & ~(stNil | stFloat))) {
+    } else if (!(st & ~(stNil | stFloat))) {
       if (st & stNil)
         d = " REAL";
       else
         d = " REAL NOT NULL";
-    }
-    else if (!(st & ~(stNil | stString))) {
+    } else if (!(st & ~(stNil | stString))) {
       if (st & stNil)
         d = " TEXT";
       else
         d = " TEXT NOT NULL";
-    }
+    } else if (!(st & stNil))
+      d = " NOT NULL";
+    else
+      d = "";
     if (v->n)
       s = sqlite3_mprintf("%z,\"%s\"%s", s, p->lexemeValue->contents, d);
     else
@@ -174,7 +174,6 @@ clpCon(
     clpDis(&v->v);
     return (SQLITE_NOMEM);
   }
-puts(s);
   z = sqlite3_declare_vtab(v->d, s);
   sqlite3_free(s);
   if (z) {
