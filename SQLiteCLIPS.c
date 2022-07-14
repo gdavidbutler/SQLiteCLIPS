@@ -22,7 +22,7 @@
 /*
 ** CREATE VIRTUAL TABLE name USING CLIPS("templateName");
 **
-** Columns are CLIPS templates' "single" slots that allow INTEGER, FLOAT and / or STRING types
+** Columns are CLIPS templates' "single" slots that allow SYMBOL, INTEGER, FLOAT and / or STRING types
 ** Column ROWID (fact index) can't be set on INSERT nor changed on UPDATE
 ** Fact duplicates are controlled by CLIPS' setting "set-fact-duplication"
 ** Otherwise use EXISTS
@@ -37,7 +37,7 @@ struct clpVtb {
     char *n;      /* name */
     enum st {     /* type bit mask */
      stNone    = 0
-    ,stNil     = 1
+    ,stSymbol  = 1
     ,stInteger = 2
     ,stFloat   = 4
     ,stString  = 8
@@ -119,7 +119,7 @@ clpCon(
       if (v2.multifieldValue->contents + y)
         switch (*((v2.multifieldValue->contents + y)->lexemeValue->contents + 1)) {
         case 'Y': /* SYMBOL */
-          st |= stNil;
+          st |= stSymbol;
           break;
         case 'N': /* INTEGER */
           st |= stInteger;
@@ -133,7 +133,7 @@ clpCon(
         default:
           break;
         }
-    if (!(st & (stInteger | stFloat | stString)))
+    if (!st)
       continue;
     if (!(t = sqlite3_realloc(v->s, (v->n + 1) * sizeof (*v->s)))) {
       clpDis(&v->v);
@@ -141,22 +141,24 @@ clpCon(
     }
     v->s = t;
     (v->s + v->n)->t = st;
-    if (!(st & ~(stNil | stInteger))) {
-      if (st & stNil)
+    if (!(st & ~(stSymbol)))
+      d = " BLOB";
+    else if (!(st & ~(stSymbol | stInteger))) {
+      if (st & stSymbol)
         d = " INTEGER";
       else
         d = " INTEGER NOT NULL";
-    } else if (!(st & ~(stNil | stFloat))) {
-      if (st & stNil)
+    } else if (!(st & ~(stSymbol | stFloat))) {
+      if (st & stSymbol)
         d = " REAL";
       else
         d = " REAL NOT NULL";
-    } else if (!(st & ~(stNil | stString))) {
-      if (st & stNil)
+    } else if (!(st & ~(stSymbol | stString))) {
+      if (st & stSymbol)
         d = " TEXT";
       else
         d = " TEXT NOT NULL";
-    } else if (!(st & stNil))
+    } else if (!(st & stSymbol))
       d = " NOT NULL";
     else
       d = "";
@@ -458,6 +460,13 @@ clpClm(
   if (i)
     return (SQLITE_OK);
   switch (v.header->type) {
+  case SYMBOL_TYPE:
+    if (*(v.lexemeValue->contents + 0) != 'n'
+     || *(v.lexemeValue->contents + 1) != 'i'
+     || *(v.lexemeValue->contents + 2) != 'l'
+     || *(v.lexemeValue->contents + 3) != '\0')
+      sqlite3_result_blob(sc, v.lexemeValue->contents, strlen(v.lexemeValue->contents) + 1, SQLITE_TRANSIENT);
+    break;
   case INTEGER_TYPE:
     sqlite3_result_int64(sc, v.integerValue->contents);
     break;
@@ -505,13 +514,15 @@ clpUpd(
       if (!(b = CreateFactBuilder(V->e, DeftemplateName(V->t))))
         return (SQLITE_NOMEM);
       for (j = 2, k = 0; j < ac; ++j, ++k) {
-        if (sqlite3_value_type(*(av + j)) == SQLITE_NULL && (V->s + k)->t & stNil)
+        if (sqlite3_value_type(*(av + j)) == SQLITE_NULL && (V->s + k)->t & stSymbol)
           i = FBPutSlotSymbol(b, (V->s + k)->n, "nil");
+        else if (sqlite3_value_type(*(av + j)) == SQLITE_BLOB && (V->s + k)->t & stSymbol)
+          i = FBPutSlotSymbol(b, (V->s + k)->n, sqlite3_value_blob(*(av + j)));
         else if (sqlite3_value_type(*(av + j)) == SQLITE_INTEGER && (V->s + k)->t & stInteger)
           i = FBPutSlotInteger(b, (V->s + k)->n, sqlite3_value_int64(*(av + j)));
         else if (sqlite3_value_type(*(av + j)) == SQLITE_FLOAT && (V->s + k)->t & stFloat)
           i = FBPutSlotFloat(b, (V->s + k)->n, sqlite3_value_double(*(av + j)));
-        else if ((V->s + k)->t & stString)
+        else if (sqlite3_value_type(*(av + j)) == SQLITE_TEXT && (V->s + k)->t & stString)
           i = FBPutSlotString(b, (V->s + k)->n, (const char *)sqlite3_value_text(*(av + j)));
         else
           i = 1;
@@ -541,13 +552,15 @@ clpUpd(
       for (j = 2, k = 0; j < ac; ++j, ++k) {
         if (sqlite3_value_nochange(*(av + j)))
           continue;
-        if (sqlite3_value_type(*(av + j)) == SQLITE_NULL && (V->s + k)->t & stNil)
+        if (sqlite3_value_type(*(av + j)) == SQLITE_NULL && (V->s + k)->t & stSymbol)
           i = FMPutSlotSymbol(m, (V->s + k)->n, "nil");
+        else if (sqlite3_value_type(*(av + j)) == SQLITE_BLOB && (V->s + k)->t & stSymbol)
+          i = FMPutSlotSymbol(m, (V->s + k)->n, sqlite3_value_blob(*(av + j)));
         else if (sqlite3_value_type(*(av + j)) == SQLITE_INTEGER && (V->s + k)->t & stInteger)
           i = FMPutSlotInteger(m, (V->s + k)->n, sqlite3_value_int64(*(av + j)));
         else if (sqlite3_value_type(*(av + j)) == SQLITE_FLOAT && (V->s + k)->t & stFloat)
           i = FMPutSlotFloat(m, (V->s + k)->n, sqlite3_value_double(*(av + j)));
-        else if ((V->s + k)->t & stString)
+        else if (sqlite3_value_type(*(av + j)) == SQLITE_TEXT && (V->s + k)->t & stString)
           i = FMPutSlotString(m, (V->s + k)->n, (const char *)sqlite3_value_text(*(av + j)));
         else
           i = 1;

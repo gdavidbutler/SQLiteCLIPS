@@ -23,13 +23,6 @@ int
 main(
 ){
   extern int sqlite3_clips_init(sqlite3 *, Environment *);
-  static const char ls[] =
-   "(deftemplate MAIN::t1"
-    "(slot s1 (type INTEGER))"       /* t1.s1 INTEGER NOT NULL */
-    "(slot s2 (type SYMBOL STRING))" /* t1.s2 TEXT */
-    "(slot s3)"                      /* t1.s3 */
-   ")"
-  ;
   Environment *ev;
   sqlite3 *db;
   sqlite3_stmt *st;
@@ -41,7 +34,13 @@ main(
     return (-1);
   }
   SetConserveMemory(ev, 1);
-  if (!LoadFromString(ev, ls, SIZE_MAX)) {
+  if (!LoadFromString(ev
+  ,"(deftemplate MAIN::t1"
+    "(slot s1 (type INTEGER))"       /* t1.s1 INTEGER NOT NULL */
+    "(slot s2 (type SYMBOL STRING))" /* t1.s2 TEXT */
+    "(slot s3)"                      /* t1.s3 */
+   ")"
+  ,SIZE_MAX)) {
     fprintf(stderr, "LoadFromString fail\n");
     return (-1);
   }
@@ -65,7 +64,7 @@ main(
     fprintf(stderr, "sqlite3_prepare %s\n", sqlite3_errmsg(db));
     return (-1);
   }
-  if (sqlite3_exec(db, "INSERT INTO \"t1\"(\"s1\",\"s2\")VALUES(1,'a'),(2,'b');", 0,0,0)) {
+  if (sqlite3_exec(db, "INSERT INTO \"t1\"(\"s1\",\"s2\")VALUES(1,CAST('a' AS BLOB)),(2,'b');", 0,0,0)) {
     fprintf(stderr, "sqlite3_exec %s\n", sqlite3_errmsg(db));
     return (-1);
   }
