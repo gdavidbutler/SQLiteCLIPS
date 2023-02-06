@@ -27,7 +27,8 @@
 # include <net/ethernet.h>
 #endif
 #include <arpa/inet.h>
-#include "sqlite3.h"
+#include "sqlite3ext.h"
+SQLITE_EXTENSION_INIT1
 
 /*
  * patterned from Oracle's INSTR
@@ -741,7 +742,7 @@ sqliteLocal(
   int rc;
 
   (void)e;
-  (void)a;
+  SQLITE_EXTENSION_INIT2(a);
   if (!(rc = sqlite3_create_function(db, "instr", 2, SQLITE_UTF8|SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS, 0, instrFunc, 0, 0))
    && !(rc = sqlite3_create_function(db, "instr", 3, SQLITE_UTF8|SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS, 0, instrFunc, 0, 0))
    && !(rc = sqlite3_create_function(db, "instr", 4, SQLITE_UTF8|SQLITE_DETERMINISTIC|SQLITE_INNOCUOUS, 0, instrFunc, 0, 0))
