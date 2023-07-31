@@ -12,7 +12,7 @@ clean:
 	rm -f SQLiteCLIPS.o example
 
 example: example.c SQLiteCLIPS.o
-	cc $(CFLAGS) -o example example.c SQLiteCLIPS.o $(CLIPS_LIB) $(SQLITE_LIB)
+	$(CC) $(CFLAGS) -o example example.c SQLiteCLIPS.o $(CLIPS_LIB) $(SQLITE_LIB)
 
 check: example
 	./example
